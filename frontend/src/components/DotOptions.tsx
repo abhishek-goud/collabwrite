@@ -34,7 +34,7 @@ const DotOptions = ({ doc, setRefresh }: any) => {
               Delete
             </li>
             <li className="p-2 hover:bg-gray-100 cursor-pointer">Rename</li>
-            <a href={`/app/document/${doc.id}`} target="_blank" rel="noopener noreferrer">
+            <a href={`/app/document/${doc.docId}`} target="_blank" rel="noopener noreferrer">
               <li className="p-2 hover:bg-gray-100 cursor-pointer">
                 Open in new tab
               </li>

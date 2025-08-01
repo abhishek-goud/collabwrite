@@ -1,13 +1,19 @@
-import App from "./App";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 
 import { Outlet } from "react-router-dom";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 
 const routes = [
   {
     path: "/",
-    element: <App />,
+    element: <Login />,
+  },
+
+  {
+    path: "/register",
+    element: <Register />,
   },
 
   {

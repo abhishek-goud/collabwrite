@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  userId       String @id @default(uuid()) @db.VarChar(255)
+  username     String @unique @db.VarChar(255)
+  email        String @unique @db.VarChar(255)
+  passwordHash String @db.VarChar(255)
+
+  // Required for foreign key relation
+  permissions Permission[]
+
+  // Indexes for faster queries
+  @@index([username])
+  @@index([email])
+  @@map("users") // Maps to 'users' table in database
+}
+
+model Document {
+  docId     String   @id @default(uuid()) @db.VarChar(255)
+  title     String   @default("Untitled Document") @db.VarChar(255)
+  content   String   @default("") @db.Text // Using Text for potentially long content
+  createdBy String   @db.VarChar(255) // Just a string reference, no FK constraint
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt // Auto-updates on record change
+
+  // Required for foreign key relation
+  permissions Permission[]
+
+  // Indexes for faster queries
+  @@index([createdBy])
+  @@map("documents") // Maps to 'documents' table in database
+}
+
+model Permission {
+  userId    String      @db.VarChar(255)
+  docId     String      @db.VarChar(255)
+  access    AccessLevel @default(read)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now()) @updatedAt // Auto-updates on record change
+
+  // Foreign key relations
+  user     User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  document Document @relation(fields: [docId], references: [docId], onDelete: Cascade)
+
+  // Compound primary key with userId first as requested
+  @@id([userId, docId])
+  @@map("permissions") // Maps to 'permissions' table in database
+}
+
+enum AccessLevel {
+  read
+  write
+  admin
+}
