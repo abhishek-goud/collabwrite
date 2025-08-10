@@ -44,7 +44,7 @@ const getDocsByUserId = async (userId) => {
 
     return result;
   } catch (err) {
-    console.log("Error fetching documents:", err);
+    throw new Error("Error fetching documents: " + err.message);
   }
 };
 
@@ -72,8 +72,24 @@ const saveDocument = async (userId, title) => {
 
     return doc;
   } catch (err) {
-    console.log("Error saving document:", err);
+    throw new Error("Error saving document: " + err.message);
   }
 };
 
-module.exports = { getDocsByUserId, saveDocument };
+const getDocById = async(documentId, userId) => {
+  try{
+      const doc = await prisma.document.findUnique({
+          where: { docId: documentId },
+          include: {
+              permissions: {
+                  where: { userId: userId }
+              }
+          }
+      });
+      return doc;
+  } catch(err){
+    throw new Error("Error fetching document: " + err.message);
+  }
+}
+
+module.exports = { getDocsByUserId, saveDocument, getDocById };

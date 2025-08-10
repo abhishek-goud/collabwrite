@@ -1,4 +1,4 @@
-const { getDocsByUserId, saveDocument } = require("../services/document");
+const { getDocsByUserId, saveDocument, getDocById } = require("../services/document");
 const getAllDocs = async(req, res) => {
     try{
         const userId = req.session.userId;
@@ -7,6 +7,9 @@ const getAllDocs = async(req, res) => {
     } catch (err){
         console.log("Error fetching  documents:", err)
         return res.status(500).json({message: "Internal server error"});
+    }
+    finally{
+        console.log("session: ",req.session)
     }
 }
 
@@ -26,4 +29,17 @@ const createDocument = async(req, res) => {
         return res.status(500).json({message: "Internal server error"});
     }
 }
-module.exports = {getAllDocs, createDocument}
+
+const getById = async(req, res) => {
+    try{
+        const documentId = req.params.id;
+        const userId = req.session.userId;
+
+        const doc = await getDocById(documentId, userId);
+        return res.status(200).json(doc);
+    } catch(err){
+        console.log("Error fetching document")
+        return res.status(500).json({message: "Error fetching document"});
+    }
+}
+module.exports = {getAllDocs, createDocument, getById}

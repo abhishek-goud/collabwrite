@@ -2,9 +2,10 @@
 import { useState, useRef, useEffect } from "react";
 import TextEditor from "../components/TextEditor";
 import logo from "../public/logo.svg";
-import { useNavigate} from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { LoaderIcon } from "lucide-react";
 import { BsCloudCheck } from "react-icons/bs";
+import axios from "../config/axios";
 
 const Editor = () => {
   const navigate = useNavigate();
@@ -13,6 +14,22 @@ const Editor = () => {
   const [username, setUsername] = useState<string>("");
   const [showLoader, setShowLoader] = useState(false);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    const fetchDocumentDetails = async () => {
+      try {
+        const response = await axios.get(`/doc/${id}`);
+        const data = response.data;
+        console.log("Document data:", data);
+        setTitle(data.title);
+      } catch (err) {
+        console.error("Error fetching document");
+      }
+    };
+
+    fetchDocumentDetails();
+  }, [id]);
 
   useEffect(() => {
     if (editingTitle) {
@@ -43,7 +60,7 @@ const Editor = () => {
           <div className="flex justify-start">
             <img
               src={logo}
-              alt="google docs logo"
+              alt="collabwrite_logo"
               className="w-[45px] cursor-pointer"
               onClick={() => navigate("/app")}
             />
@@ -92,7 +109,11 @@ const Editor = () => {
           </div>
         </div>
       </div>
-      <TextEditor />
+      <TextEditor
+        documentId={id}
+        username={username}
+        setUsername={setUsername}
+      />
     </div>
   );
 };

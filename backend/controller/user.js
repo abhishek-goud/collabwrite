@@ -48,7 +48,7 @@ const userLogin = async(req, res) => {
 }
 
 const checkSession = (req, res) => {
-  return res.send("Session is active");
+  return res.status(200).json({message: true, username: req.session.username, userId: req.session.userId});
 }
 
 module.exports = { registerUser, userLogin, checkSession};

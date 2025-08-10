@@ -1,9 +1,9 @@
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 
-import { Outlet } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Wrapper from "./pages/Wrapper";
 
 const routes = [
   {
@@ -18,7 +18,7 @@ const routes = [
 
   {
     path: "/app",
-    element: <Outlet />,
+    element: <Wrapper />,
     children: [
       {
         path: "",

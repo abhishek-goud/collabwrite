@@ -1,55 +1,143 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { FaShare, FaTimes } from "react-icons/fa";
+import { EditorDataModel } from "../config/EditorDataMode";
+import axios from "../config/axios";
 
-const TextEditor = () => {
+interface TextEditorProps {
+  documentId: string | undefined;
+  username: string | undefined;
+  setUsername: React.Dispatch<React.SetStateAction<string>>;
+}
+
+const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
   const [title, setTitle] = useState("Untitled Document");
   const [permission, setPermission] = useState("read");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareUsername, setShareUsername] = useState("");
   const [shareAccess, setShareAccess] = useState("read");
   const [shareStatus, setShareStatus] = useState("");
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const [editor, setEditor] = useState<EditorDataModel | null>(null);
+  const [userId, setUserId] = useState();
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const response = await axios.get("/user/session");
+      const data = response.data;
+
+      setUserId(data.userId);
+      setUsername(data.username);
+    };
+
+    fetchUserDetails();
+  }, []);
+
+  useEffect(() => {
+    console.log("Updated text:", text);
+  }, [text]);
+
+  useEffect(() => {
+    if (userId && documentId) {
+      console.log(
+        "Initializing editor with userId:",
+        userId,
+        "and documentId:",
+        documentId
+      );
+      setEditor(new EditorDataModel(userId, documentId));
+    }
+  }, [userId, documentId]); // Runs when both values are ready
 
   const fontInfo = { width: 8, height: 18 };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const key = e.key;
+    console.log("Key pressed:", key);
+    if (!editor) return;
+    console.log("Key pressed:", key);
+    if (key.length == 1) editor.insertChar(key, editor.cursor_position);
+    else
+      console.log(
+        "Backspace pressed, current position:",
+        editor.cursor_position
+      );
+    setText(editor.getText());
+  };
+
   return (
     <div
-      className={`w-[90%] h-screen m-5 border flex flex-col rounded-lg shadow-md relative`}
+      className={`w-[90%] h-screen bg-gray-200 m-5 border flex flex-col rounded-lg shadow-md relative`}
     >
+      {/* Navbar with original touch + hover effects */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-100 rounded-t-lg border-b">
         <div>
           <ul className="flex gap-4 text-sm font-normal">
-            <li>File</li>
-            <li>Edit</li>
-            <li>View</li>
-            <li>Insert</li>
-            <li>Format</li>
-            <li>Tools</li>
-            <li>Extensions</li>
-            <li>Help</li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              File
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Edit
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              View
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Insert
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Format
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Tools
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Extensions
+            </li>
+            <li className="px-2 py-1 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-150">
+              Help
+            </li>
           </ul>
         </div>
         {permission === "admin" && (
           <button
             onClick={() => {}}
-            className="flex items-center gap-2 px-3 py-1 border rounded-md bg-white hover:bg-gray-50"
+            className="flex items-center gap-2 px-3 py-1 border rounded-md bg-white hover:bg-gray-50 transition-colors duration-150"
           >
             <FaShare size={16} />
             Share
           </button>
         )}
       </div>
+
+      {/* Text Editor with improved styling */}
       <div
-        className={`w-full h-full overflow-x-hidden min-h-64 p-5 bg-white border-gray-300 font-mono text-base focus:outline-none overflow-auto caret-transparent ${
-          permission === "read" ? "cursor-default bg-gray-50" : ""
-        }`}
+        ref={editorRef}
+        contentEditable={true}
+        suppressContentEditableWarning
+        onKeyDown={handleKeyDown}
+        // className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto ${
+        //   permission === "read" ? "cursor-default bg-gray-50" : ""
+        // }`}
+        className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto cursor-default  `}
         style={{
           whiteSpace: "pre-wrap",
+          fontFamily: "system-ui, -apple-system, sans-serif",
           lineHeight: `${fontInfo.height}px`,
         }}
+        dangerouslySetInnerHTML={{ __html: text }}
       />
 
+      {/* {permission === "read" && (
+        <div className="absolute bottom-4 right-4 bg-yellow-100 px-3 py-1 rounded-md text-sm">
+          Read-only mode
+        </div>
+      )} */}
+
+      {/* Custom Dialog implementation */}
       {isShareDialogOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
@@ -72,7 +160,7 @@ const TextEditor = () => {
                   id="username"
                   value={shareUsername}
                   onChange={(e) => setShareUsername(e.target.value)}
-                  placeholder="Enter username to share with"
+                  placeholder="username"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -124,19 +212,19 @@ const TextEditor = () => {
       )}
 
       <style>{`
-        @keyframes blink {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0;
-          }
-        }
-        .blink {
-          animation: blink 1s step-end infinite;
-        }
-      `}</style>
+    @keyframes blink {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0;
+      }
+    }
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+  `}</style>
     </div>
   );
 };
