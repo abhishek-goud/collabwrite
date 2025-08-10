@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 class CharNode{
-    id: string;
     char: string;
-    position: number;
     next: CharNode | null;
     prev: CharNode | null;
 
-    constructor(id: string, char: string, position: number) {
-        this.id = id;
+    constructor(char: string) {
         this.char = char;
-        this.position = position;
         this.next = null;
         this.prev = null;
     }
@@ -35,7 +31,7 @@ export class EditorDataModel{
     }
 
     insertChar(char: string, position: number): void {
-        const node = new CharNode(this.userId, char, position);
+        const node = new CharNode(char);
         if(!this.head){
             this.head = node;
             this.tail = node;
@@ -75,6 +71,22 @@ export class EditorDataModel{
         currNode.prev = node;
         this.cursor_position++;    
         
+    }
+
+    deleteChar(position: number){
+        if(position - 1 < 0 || position - 1 >= this.index.length) return;
+
+        const node = this.index[position];
+
+        if(node.prev) node.prev.next = node.next;
+        if(node.next) node.next.prev = node.prev;
+
+        if(this.head === node) this.head = node.next;
+        if(this.tail === node) this.tail = node.prev;
+
+        this.index.splice(position, 1);
+
+        this.cursor_position--;
     }
 
     getText(): string{

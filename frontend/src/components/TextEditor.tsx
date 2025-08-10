@@ -60,11 +60,14 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     if (!editor) return;
     console.log("Key pressed:", key);
     if (key.length == 1) editor.insertChar(key, editor.cursor_position);
-    else
+    else{
+      editor.deleteChar(editor.cursor_position);
       console.log(
         "Backspace pressed, current position:",
         editor.cursor_position
       );
+    }
+      
     setText(editor.getText());
   };
 
