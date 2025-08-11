@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
 import { FaShare, FaTimes } from "react-icons/fa";
 import { EditorDataModel } from "../config/EditorDataMode";
@@ -58,18 +58,30 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     const key = e.key;
     console.log("Key pressed:", key);
     if (!editor) return;
-    console.log("Key pressed:", key);
+
     if (key.length == 1) editor.insertChar(key, editor.cursor_position);
-    else{
-      editor.deleteChar(editor.cursor_position);
-      console.log(
-        "Backspace pressed, current position:",
-        editor.cursor_position
-      );
+    else if (key === "Enter") {
+      editor.insertChar("\n", editor.cursor_position);
+      console.log()
     }
-      
+    else if(key === "Backspace"){
+      console.log("backspaced")
+      editor.deleteChar(editor.cursor_position);
+    }
+   
     setText(editor.getText());
+    console.log("cursor_position", editor.cursor_position);
   };
+
+  const handleClick = (e: MouseEvent<HTMLDivElement>) =>{
+    if(!editor || !editorRef.current) return;
+    const rect = editorRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const position = editor.getPosition(x, y, fontInfo);
+    console.log("current pos", position)
+    editor.setCursorPosition(position)
+  }
 
   return (
     <div
@@ -122,10 +134,11 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
         contentEditable={true}
         suppressContentEditableWarning
         onKeyDown={handleKeyDown}
+        onClick={handleClick}
         // className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto ${
         //   permission === "read" ? "cursor-default bg-gray-50" : ""
         // }`}
-        className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto cursor-default  `}
+        className={`w-full h-full overflow-x-hidden min-h-64 p-3 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto cursor-default  `}
         style={{
           whiteSpace: "pre-wrap",
           fontFamily: "system-ui, -apple-system, sans-serif",
