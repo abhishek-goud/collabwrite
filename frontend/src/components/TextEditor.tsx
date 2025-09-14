@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 
 import { FaShare, FaTimes } from "react-icons/fa";
 import { EditorDataModel } from "../config/EditorDataMode";
@@ -54,7 +60,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
   const fontInfo = { width: 8, height: 18 };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    e.preventDefault()
+    e.preventDefault();
     const key = e.key;
     console.log("Key pressed:", key);
     if (!editor) return;
@@ -62,26 +68,35 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     if (key.length == 1) editor.insertChar(key, editor.cursor_position);
     else if (key === "Enter") {
       editor.insertChar("\n", editor.cursor_position);
-      console.log()
-    }
-    else if(key === "Backspace"){
-      console.log("backspaced")
+      console.log();
+    } else if (key === "Backspace") {
+      console.log("backspaced");
       editor.deleteChar(editor.cursor_position);
+    } else if (key === "ArrowUp") {
+      console.log("up");
+    } else if (key === "ArrowDown") {
+      console.log("down");
+    } else if (key === "ArrowLeft") {
+      console.log("left");
+    } else if (key === "ArrowRight") {
+      console.log("down");
     }
-   
-    setText(editor.getText());
+
+    // setText(editor.getText());
+    setText(editor.getTextWithCursor(editor.cursor_position));
     console.log("cursor_position", editor.cursor_position);
   };
 
-  const handleClick = (e: MouseEvent<HTMLDivElement>) =>{
-    if(!editor || !editorRef.current) return;
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!editor || !editorRef.current) return;
     const rect = editorRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const position = editor.getPosition(x, y, fontInfo);
-    console.log("current pos", position)
-    editor.setCursorPosition(position)
-  }
+    console.log("current pos", position);
+    editor.setCursorPosition(position);
+    setText(editor.getTextWithCursor(editor.cursor_position));
+  };
 
   return (
     <div
@@ -192,7 +207,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
                 >
                   <option value="read">Read (View only)</option>
                   <option value="write">Write (Can edit)</option>
-                  <option value="admin">Admin (Full control)</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
 
@@ -228,19 +243,17 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
       )}
 
       <style>{`
-    @keyframes blink {
-      0%,
-      100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0;
-      }
-    }
-    .blink {
-      animation: blink 1s step-end infinite;
-    }
-  `}</style>
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+          }
+          .cursor.blink {
+            border-left: 2px solid black;
+            display: inline;
+            animation: blink 1s step-end infinite;
+          }
+        `}
+    </style>
     </div>
   );
 };
