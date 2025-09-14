@@ -41,9 +41,9 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     fetchUserDetails();
   }, []);
 
-  useEffect(() => {
-    console.log("Updated text:", text);
-  }, [text]);
+  // useEffect(() => {
+  //   console.log("Updated text:", text);
+  // }, [text]);
 
   useEffect(() => {
     if (userId && documentId) {
@@ -74,12 +74,16 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
       editor.deleteChar(editor.cursor_position);
     } else if (key === "ArrowUp") {
       console.log("up");
+      editor.moveCursorUp();
     } else if (key === "ArrowDown") {
       console.log("down");
+      editor.moveCursorDown();
     } else if (key === "ArrowLeft") {
       console.log("left");
+      editor.moveCursorLeft();
     } else if (key === "ArrowRight") {
       console.log("down");
+      editor.moveCursorRight()
     }
 
     // setText(editor.getText());

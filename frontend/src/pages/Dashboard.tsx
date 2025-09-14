@@ -21,6 +21,7 @@ type Cursor = {
 
 type Document = {
   id: string;
+  docId: string;
   title: string;
   cursors: Cursor[];
   content: string;
@@ -186,7 +187,7 @@ const Dashboard = () => {
                   className="p-4 border border-slate-200 bg-white rounded-xl shadow-sm cursor-pointer flex justify-between items-center hover:bg-slate-50 hover:shadow-md hover:border-slate-300 transition-all duration-200 group"
                 >
                   <div
-                    onClick={() => navigate(`/app/document/${doc.id}`)}
+                    onClick={() => navigate(`/app/document/${doc.docId}`)}
                     className="flex-1"
                   >
                     <div className="flex items-center space-x-3 mb-2">

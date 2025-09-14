@@ -20,6 +20,7 @@ export class EditorDataModel {
 
   public cursor_position: number = 0;
   private lineStartPositions: number[] = [0];
+  private lineWidths: number[] = [];
 
   constructor(userId: string, documentId: string) {
     this.head = null;
@@ -71,6 +72,7 @@ export class EditorDataModel {
     currNode.prev = newNode;
     this.index.splice(pos, 0, newNode);
     if (char === "\n") this.updateLineInfo();
+    // this.updateLineInfo();
     this.cursor_position++;
   }
 
@@ -97,11 +99,10 @@ export class EditorDataModel {
     this.index.map((node, index) => {
       text += node.char;
     });
-    console.log("Current text:", text);
+    // console.log("Current text:", text);
 
     return text;
   }
-
 
   getPosition(
     x: number,
@@ -137,11 +138,15 @@ export class EditorDataModel {
   updateLineInfo = (): void => {
     const text = this.getText();
     this.lineStartPositions = [0];
+    this.lineWidths = [];
+    let width = 0;
 
     for (let i = 0; i < text.length; i++) {
       const ch = text[i];
-
+      width++;
       if (ch === "\n") {
+        this.lineWidths.push(width);
+        width = 0;
         this.lineStartPositions.push(i + 1);
       }
     }
@@ -150,24 +155,127 @@ export class EditorDataModel {
   getTextWithCursor(cursorPosition: number): string {
     const text = this.getText();
     const cursorHTML = "<span class='cursor blink'></span>";
-    const textWithCursor =  text.slice(0, cursorPosition) + cursorHTML + text.slice(cursorPosition);
+    const textWithCursor =
+      text.slice(0, cursorPosition) + cursorHTML + text.slice(cursorPosition);
     return textWithCursor;
-
   }
 
-  moveCursorUp(): void{
+  moveCursorUp(): void {
+    let currLineIndex = 0;
+
+    for (let i = 0; i < this.lineStartPositions.length; i++) {
+      if (
+        this.cursor_position < this.lineStartPositions[i + 1] ||
+        i == this.lineStartPositions.length - 1
+      ) {
+        currLineIndex = i;
+        break;
+      }
+    }
+
+    if (currLineIndex == 0) return; // already at first line
+
+    const offSet =
+      this.cursor_position - this.lineStartPositions[currLineIndex] + 1;
+
+    if (this.lineWidths[currLineIndex - 1] >= offSet)
+      this.cursor_position =
+        this.lineStartPositions[currLineIndex - 1] + offSet - 1;
+    else
+      this.cursor_position =
+        this.lineStartPositions[currLineIndex - 1] +
+        this.lineWidths[currLineIndex - 1] -
+        1;
+    return;
+  }
+
+  moveCursorDown(): void {
+    let currLineIndex = 0;
+
+    for (let i = 0; i < this.lineStartPositions.length; i++) {
+      if (
+        this.cursor_position < this.lineStartPositions[i + 1] ||
+        i == this.lineStartPositions.length - 1
+      ) {
+        currLineIndex = i;
+        break;
+      }
+    }
+    console.log("size", this.lineStartPositions.length);
+    console.log("downCurrLine", { currLineIndex });
+    if (currLineIndex === this.lineStartPositions.length - 1) return;
+    if (currLineIndex === this.lineWidths.length - 1) return;
+    const offSet =
+      this.cursor_position - this.lineStartPositions[currLineIndex] + 1;
+
+    const nextOffSet = Math.min(offSet, this.lineWidths[currLineIndex + 1]);
+
+    this.cursor_position =
+      this.lineStartPositions[currLineIndex + 1] + nextOffSet - 1;
+    const meta = {
+      st: this.lineStartPositions[currLineIndex + 1],
+      nextLineW: this.lineWidths[currLineIndex + 1],
+      off: nextOffSet,
+      netPos: this.cursor_position,
+    };
+    console.log("cursorDown", meta);
+    console.log(this.lineWidths);
+    return;
+  }
+
+
+  moveCursorLeft(): void{
      let currLineIndex = 0;
 
-     for(let i = 0; i < this.lineStartPositions.length; i++){
-        if((this.cursor_position < this.lineStartPositions[i + 1]) || i == this.lineStartPositions.length - 1){
-          currLineIndex = i;
-          break;
-        }
-     }
+    for (let i = 0; i < this.lineStartPositions.length; i++) {
+      if (
+        this.cursor_position < this.lineStartPositions[i + 1] ||
+        i == this.lineStartPositions.length - 1
+      ) {
+        currLineIndex = i;
+        break;
+      }
+    }
 
-     const offSet = this.cursor_position - this.lineStartPositions[currLineIndex];
-     
+    if(currLineIndex == 0){
+       this.cursor_position = Math.max(0, this.cursor_position - 1);
+       return;
+    }
+
+    // if(this.cursor_position - 1 < this.lineStartPositions[currLineIndex]) this.cursor_position = this.lineStartPositions[currLineIndex - 1] + this.lineWidths[currLineIndex - 1] - 1;
+    // else this.cursor_position = this.cursor_position - 1;
+
+    this.cursor_position = this.cursor_position - 1;
+  
   }
 
 
+
+  moveCursorRight(): void{
+     let currLineIndex = 0;
+
+    for (let i = 0; i < this.lineStartPositions.length; i++) {
+      if (
+        this.cursor_position < this.lineStartPositions[i + 1] ||
+        i == this.lineStartPositions.length - 1
+      ) {
+        currLineIndex = i;
+        break;
+      }
+    }
+
+    if(currLineIndex == this.lineStartPositions.length - 1){
+       this.cursor_position = Math.min(this.getText().length, this.cursor_position + 1);
+       console.log("right", this.cursor_position);
+       return;
+    }
+
+    // if(this.cursor_position - 1 < this.lineStartPositions[currLineIndex]) this.cursor_position = this.lineStartPositions[currLineIndex - 1] + this.lineWidths[currLineIndex - 1] - 1;
+    // else this.cursor_position = this.cursor_position - 1;
+
+    this.cursor_position = this.cursor_position + 1;
+  
+  }
+
+  
 }

@@ -27,28 +27,38 @@ const registerUser = async (req, res) => {
   }
 };
 
-const userLogin = async(req, res) => {
-  const {username, password} = req.body;
-  const user = await getUsers({username, password});
-  const isValidpassword = await bcrypt.compare(password, user.passwordHash);
-  
-  if(!isValidpassword){
-    return res.status(401).json({message: "Invalid credentials"})
+const userLogin = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await getUsers({ username, password });
+    const isValidpassword = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isValidpassword) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    req.session.userId = user.userId;
+    req.session.username = user.username;
+
+    res.json({
+      message: "Login successful",
+      userId: user.userId,
+      username: user.username,
+    });
+  } catch (err) {
+    res.status(500).json({message: "Internal Server Error"})
+    console.log(err)
   }
-
-  req.session.userId = user.userId;
-  req.session.username = user.username;
-
-  res.json({
-    message: "Login successful",
-    userId: user.userId,
-    username: user.username
-  })
-
-}
+};
 
 const checkSession = (req, res) => {
-  return res.status(200).json({message: true, username: req.session.username, userId: req.session.userId});
-}
+  return res
+    .status(200)
+    .json({
+      message: true,
+      username: req.session.username,
+      userId: req.session.userId,
+    });
+};
 
-module.exports = { registerUser, userLogin, checkSession};
+module.exports = { registerUser, userLogin, checkSession };
