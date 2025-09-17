@@ -1,10 +1,11 @@
 const router = require("express").Router();
-const isAuthenticated = require("../middleware/session");
-const { getAllDocs, createDocument, getById } = require("../controller/document");
+const {isAuthenticated, checkDocumentPermission} = require("../middlewares/middleware");
+const { getAllDocs, createDocument, getById, updateDocument } = require("../controller/document");
 
 router.get("/", isAuthenticated, getAllDocs);
 router.post("/new", isAuthenticated, createDocument);
-router.get("/:id", isAuthenticated, getById)
+router.get("/:id", isAuthenticated, checkDocumentPermission, getById);
+router.put("/:id", isAuthenticated, updateDocument);
 
 
 module.exports = router;

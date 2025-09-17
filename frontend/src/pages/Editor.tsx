@@ -113,6 +113,9 @@ const Editor = () => {
         documentId={id}
         username={username}
         setUsername={setUsername}
+        title = {title}
+        setTitle={setTitle}
+        setShowLoader={setShowLoader}
       />
     </div>
   );

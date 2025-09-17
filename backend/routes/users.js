@@ -1,5 +1,5 @@
 const { registerUser, userLogin, checkSession } = require("../controller/user");
-const isAuthenticated = require("../middleware/session");
+const {isAuthenticated} = require("../middlewares/middleware");
 
 
 const router = require("express").Router();

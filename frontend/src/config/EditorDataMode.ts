@@ -104,7 +104,7 @@ export class EditorDataModel {
     return text;
   }
 
-  getPosition(
+  getCursorPosition(
     x: number,
     y: number,
     fontInfo: { width: number; height: number }
@@ -212,20 +212,20 @@ export class EditorDataModel {
 
     this.cursor_position =
       this.lineStartPositions[currLineIndex + 1] + nextOffSet - 1;
-    const meta = {
-      st: this.lineStartPositions[currLineIndex + 1],
-      nextLineW: this.lineWidths[currLineIndex + 1],
-      off: nextOffSet,
-      netPos: this.cursor_position,
-    };
-    console.log("cursorDown", meta);
-    console.log(this.lineWidths);
+
+    // const meta = {
+    //   st: this.lineStartPositions[currLineIndex + 1],
+    //   nextLineW: this.lineWidths[currLineIndex + 1],
+    //   off: nextOffSet,
+    //   netPos: this.cursor_position,
+    // };
+    // console.log("cursorDown", meta);
+    // console.log(this.lineWidths);
     return;
   }
 
-
-  moveCursorLeft(): void{
-     let currLineIndex = 0;
+  moveCursorLeft(): void {
+    let currLineIndex = 0;
 
     for (let i = 0; i < this.lineStartPositions.length; i++) {
       if (
@@ -237,22 +237,19 @@ export class EditorDataModel {
       }
     }
 
-    if(currLineIndex == 0){
-       this.cursor_position = Math.max(0, this.cursor_position - 1);
-       return;
+    if (currLineIndex == 0) {
+      this.cursor_position = Math.max(0, this.cursor_position - 1);
+      return;
     }
 
     // if(this.cursor_position - 1 < this.lineStartPositions[currLineIndex]) this.cursor_position = this.lineStartPositions[currLineIndex - 1] + this.lineWidths[currLineIndex - 1] - 1;
     // else this.cursor_position = this.cursor_position - 1;
 
     this.cursor_position = this.cursor_position - 1;
-  
   }
 
-
-
-  moveCursorRight(): void{
-     let currLineIndex = 0;
+  moveCursorRight(): void {
+    let currLineIndex = 0;
 
     for (let i = 0; i < this.lineStartPositions.length; i++) {
       if (
@@ -264,18 +261,24 @@ export class EditorDataModel {
       }
     }
 
-    if(currLineIndex == this.lineStartPositions.length - 1){
-       this.cursor_position = Math.min(this.getText().length, this.cursor_position + 1);
-       console.log("right", this.cursor_position);
-       return;
+    if (currLineIndex == this.lineStartPositions.length - 1) {
+      this.cursor_position = Math.min(
+        this.getText().length,
+        this.cursor_position + 1
+      );
+      console.log("right", this.cursor_position);
+      return;
     }
 
     // if(this.cursor_position - 1 < this.lineStartPositions[currLineIndex]) this.cursor_position = this.lineStartPositions[currLineIndex - 1] + this.lineWidths[currLineIndex - 1] - 1;
     // else this.cursor_position = this.cursor_position - 1;
 
     this.cursor_position = this.cursor_position + 1;
-  
   }
 
-  
+  setText(text: string): void {
+    for(let i = 0; i < text.length; i++){
+      this.insertChar(text[i], i);
+    }
+  }
 }

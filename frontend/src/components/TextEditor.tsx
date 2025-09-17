@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   useEffect,
@@ -10,15 +11,26 @@ import {
 import { FaShare, FaTimes } from "react-icons/fa";
 import { EditorDataModel } from "../config/EditorDataMode";
 import axios from "../config/axios";
+import { io, Socket } from "socket.io-client";
 
 interface TextEditorProps {
   documentId: string | undefined;
   username: string | undefined;
+  title: string | "";
   setUsername: React.Dispatch<React.SetStateAction<string>>;
+  setTitle: React.Dispatch<React.SetStateAction<string>>;
+  setShowLoader: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
-  const [title, setTitle] = useState("Untitled Document");
+const TextEditor = ({
+  documentId,
+  username,
+  setUsername,
+  title,
+  setTitle,
+  setShowLoader,
+}: TextEditorProps) => {
+  // const [title, setTitle] = useState("Untitled Document");
   const [permission, setPermission] = useState("read");
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareUsername, setShareUsername] = useState("");
@@ -28,6 +40,21 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
   const [editor, setEditor] = useState<EditorDataModel | null>(null);
   const [userId, setUserId] = useState();
   const [text, setText] = useState("");
+  const socketRef = useRef<Socket | null>(null);
+  // const [loading, setLoading] = useState(true)
+
+  const fetchDocument = async () => {
+    const res = await axios.get(`/doc/${documentId}`);
+    console.log("fetched doc", res.data);
+    setTitle(res.data.title);
+    setPermission(res.data.permission);
+    editor?.setText(res.data.content);
+    setText(editor?.getTextWithCursor(editor.cursor_position) || "");
+  };
+
+  const handleShare = async() => {
+    await axios.put(``)
+  }
 
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -41,24 +68,68 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     fetchUserDetails();
   }, []);
 
-  // useEffect(() => {
-  //   console.log("Updated text:", text);
-  // }, [text]);
+  useEffect(() => {
+    const updateDocument = async () => {
+      if (editor) {
+        try {
+          const res = await axios.put(`/doc/${documentId}`, {
+            content: editor?.getText(),
+          });
+          setShowLoader(false);
+          console.log("doc updated", res.data);
+        } catch (error) {
+          console.error("Error updating document:", error);
+        }
+      }
+    };
+
+    updateDocument();
+  }, [text]);
+
+  useEffect(() => {
+    const updateDocument = async () => {
+      if (editor) {
+        try {
+          setShowLoader(true);
+          const res = await axios.put(`/doc/${documentId}`, {
+            title: title,
+          });
+          setShowLoader(false);
+          console.log("doc updated", res.data);
+        } catch (error) {
+          console.error("Error updating document:", error);
+          setShowLoader(false);
+        }
+      }
+    };
+
+    updateDocument();
+  }, [title]);
 
   useEffect(() => {
     if (userId && documentId) {
-      console.log(
-        "Initializing editor with userId:",
-        userId,
-        "and documentId:",
-        documentId
-      );
       setEditor(new EditorDataModel(userId, documentId));
     }
   }, [userId, documentId]); // Runs when both values are ready
 
-  const fontInfo = { width: 8, height: 18 };
+  useEffect(() => {
+    if (!editor) return;
 
+    const initializeSocket = async () => {
+      await fetchDocument();
+      socketRef.current = io(import.meta.env.VITE_API_URL);
+      const socket = socketRef.current;
+
+      socket.on("connect", () => {
+        socket.emit("join-document", { documentId, userId, username });
+        console.log("connected to socket server");
+      });
+    };
+
+    initializeSocket();
+  }, [editor]);
+
+  const fontInfo = { width: 8, height: 18 };
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     e.preventDefault();
     const key = e.key;
@@ -83,7 +154,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
       editor.moveCursorLeft();
     } else if (key === "ArrowRight") {
       console.log("down");
-      editor.moveCursorRight()
+      editor.moveCursorRight();
     }
 
     // setText(editor.getText());
@@ -96,7 +167,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
     const rect = editorRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const position = editor.getPosition(x, y, fontInfo);
+    const position = editor.getCursorPosition(x, y, fontInfo);
     console.log("current pos", position);
     editor.setCursorPosition(position);
     setText(editor.getTextWithCursor(editor.cursor_position));
@@ -138,7 +209,9 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
         </div>
         {permission === "admin" && (
           <button
-            onClick={() => {}}
+            onClick={() => {
+              setIsShareDialogOpen(true);
+            }}
             className="flex items-center gap-2 px-3 py-1 border rounded-md bg-white hover:bg-gray-50 transition-colors duration-150"
           >
             <FaShare size={16} />
@@ -209,8 +282,8 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
                   onChange={(e) => setShareAccess(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value="read">Read (View only)</option>
-                  <option value="write">Write (Can edit)</option>
+                  <option value="read">Read</option>
+                  <option value="write">Write</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
@@ -236,7 +309,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
                 Cancel
               </button>
               <button
-                onClick={() => {}}
+                onClick={handleShare}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Share
@@ -246,7 +319,90 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
         </div>
       )}
 
-      <style>{`
+
+      {/* {isShareDialogOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Share Document
+              </h3>
+              <button
+                onClick={() => setIsShareDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-all duration-200"
+              >
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <label
+                  htmlFor="username"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Username
+                </label>
+                <input
+                  id="username"
+                  value={shareUsername}
+                  onChange={(e) => setShareUsername(e.target.value)}
+                  placeholder="Enter username"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-3 focus:ring-sky-100 focus:border-sky-500 transition-all duration-200 placeholder-gray-400"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="permission"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Permission Level
+                </label>
+                <select
+                  value={shareAccess}
+                  onChange={(e) => setShareAccess(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-3 focus:ring-sky-100 focus:border-sky-500 transition-all duration-200 bg-white"
+                >
+                  <option value="read">Read (View only)</option>
+                  <option value="write">Write (Can edit)</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {shareStatus && (
+                <div
+                  className={`text-sm font-medium px-4 py-3 rounded-lg ${
+                    shareStatus.includes("Error")
+                      ? "text-red-700 bg-red-50 border border-red-200"
+                      : "text-green-700 bg-green-50 border border-green-200"
+                  }`}
+                >
+                  {shareStatus}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={() => setIsShareDialogOpen(false)}
+                className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {}}
+                className="px-6 py-2.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 hover:shadow-lg transition-all duration-200 font-medium"
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )} */}
+
+      <style>
+        {`
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
@@ -257,7 +413,7 @@ const TextEditor = ({ documentId, username, setUsername }: TextEditorProps) => {
             animation: blink 1s step-end infinite;
           }
         `}
-    </style>
+      </style>
     </div>
   );
 };

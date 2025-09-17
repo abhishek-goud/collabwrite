@@ -7,9 +7,9 @@ const getDocsByUserId = async (userId) => {
     const userPermissions = await prisma.permission.findMany({
       where: { userId: userId },
     });
- 
+
     const docIds = userPermissions.map((perm) => perm.docId);
- 
+
     const docs = await prisma.document.findMany({
       where: {
         docId: {
@@ -24,8 +24,6 @@ const getDocsByUserId = async (userId) => {
       },
     });
 
-  
-
     const result = [];
     for (const doc of docs) {
       // Find permission for this document
@@ -38,7 +36,7 @@ const getDocsByUserId = async (userId) => {
           createdBy: doc.createdBy,
           updatedAt: doc.updatedAt,
           access: perm.access,
-        })
+        });
       }
     }
 
@@ -76,20 +74,63 @@ const saveDocument = async (userId, title) => {
   }
 };
 
-const getDocById = async(documentId, userId) => {
-  try{
-      const doc = await prisma.document.findUnique({
-          where: { docId: documentId },
-          include: {
-              permissions: {
-                  where: { userId: userId }
-              }
-          }
-      });
-      return doc;
-  } catch(err){
+const getDocById = async (documentId, userId) => {
+  try {
+    const doc = await prisma.document.findUnique({
+      where: { docId: documentId },
+
+    });
+    return doc;
+  } catch (err) {
     throw new Error("Error fetching document: " + err.message);
   }
-}
+};
 
-module.exports = { getDocsByUserId, saveDocument, getDocById };
+const updateDocService = async (docId, content, title) => {
+  try {
+    const updatedDoc = await prisma.document.update({
+      where: {
+        docId: docId,
+      },
+      data: {
+        content: content,
+        title: title,
+        updatedAt: new Date(),
+      },
+    });
+    return updatedDoc;
+  } catch (err) {
+    throw new Error("Error updating document");
+  }
+};
+
+const checkDocumentPermissionService = async (docId, userId) => {
+  try {
+    console.log(`Checking permissions for user ${userId} on document ${docId}`);
+
+    const permission = await prisma.permission.findFirst({
+      where: {
+        docId: docId,
+        userId: userId,
+      },
+    });
+
+    if (!permission) {
+      console.log("null")
+      return null;
+    }
+
+    return permission.access;
+  } catch (error) {
+    console.error("Error checking document permission:", error);
+    throw new Error("Error checking document permission: " + error.message);
+  }
+};
+
+module.exports = {
+  getDocsByUserId,
+  saveDocument,
+  getDocById,
+  updateDocService,
+  checkDocumentPermissionService
+};
