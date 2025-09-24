@@ -14,7 +14,7 @@ import { EditorDataModel } from "../config/EditorDataMode";
 import axios from "../config/axios";
 import { io, Socket } from "socket.io-client";
 
-import colors from "../constants/colors"
+import colors from "../constants/colors";
 
 interface TextEditorProps {
   documentId: string | undefined;
@@ -28,18 +28,17 @@ interface TextEditorProps {
 interface operation {
   type: "insert" | "delete";
   userId: string;
-  char?: string;
+  character?: string;
   position: number;
   documentId: string;
 }
 
-export interface cursorInfo{
-  position: number,
-  username: string,
-  userId: string,
-  color: string,
-  documentId: string
-
+export interface cursorInfo {
+  position: number;
+  username: string;
+  userId: string;
+  color: string;
+  documentId: string;
 }
 
 const TextEditor = ({
@@ -61,16 +60,16 @@ const TextEditor = ({
   const [userId, setUserId] = useState();
   const [docText, setDocText] = useState("");
   const socketRef = useRef<Socket | null>(null);
-  const [cursors, setCursors] =  useState<cursorInfo[]>([]);
+  const [cursors, setCursors] = useState<cursorInfo[]>([]);
   // const [loading, setLoading] = useState(true)
 
   const fetchDocument = async () => {
     const res = await axios.get(`/doc/${documentId}`);
     console.log("fetched doc", res.data);
-    setTitle(res.data.title);
+    // setTitle(res.data.title);
     setPermission(res.data.permission);
-    editor?.setText(res.data.content);
-    setDocText(editor?.getTextWithCursors(cursors) || "");
+    // editor?.setText(res.data.content);
+    // setDocText(editor?.getTextWithCursors(cursors) || "");
   };
 
   const handleShare = async () => {
@@ -107,23 +106,23 @@ const TextEditor = ({
     fetchUserDetails();
   }, []);
 
-  useEffect(() => {
-    const updateDocument = async () => {
-      if (editor) {
-        try {
-          const res = await axios.put(`/doc/${documentId}`, {
-            content: editor?.getText(),
-          });
-          // setShowLoader(false);
-          console.log("doc updated", res.data);
-        } catch (error) {
-          console.error("Error updating document:", error);
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const updateDocument = async () => {
+  //     if (editor) {
+  //       try {
+  //         const res = await axios.put(`/doc/${documentId}`, {
+  //           content: editor?.getText(),
+  //         });
+  //         // setShowLoader(false);
+  //         console.log("doc updated", res.data);
+  //       } catch (error) {
+  //         console.error("Error updating document:", error);
+  //       }
+  //     }
+  //   };
 
-    updateDocument();
-  }, [docText]);
+  //   updateDocument();
+  // }, [docText]);
 
   useEffect(() => {
     const updateDocument = async () => {
@@ -167,29 +166,30 @@ const TextEditor = ({
     };
 
     const setupSocketHandlers = () => {
-     
       const socket = socketRef.current;
 
       socket?.on("connect", () => {
-        const color = colors[Math.floor(Math.random() * colors.length)]
+        const color = colors[Math.floor(Math.random() * colors.length)];
         socket.emit("join-document", { documentId, userId, username, color });
         console.log("connected to socket server");
       });
 
-
-      socket?.on("document-state", (data: {content: string, title: string, cursors: cursorInfo[]}) => {
-        editor.setText(data.content)
-        setTitle(title)
-        setCursors(cursors)
-        setDocText(editor.getTextWithCursors(cursors));
-      })
+      socket?.on(
+        "document-state",
+        (data: { content: string; title: string; cursors: cursorInfo[] }) => {
+          editor.setText(data.content, true);
+          setTitle(data.title);
+          setCursors(data.cursors);
+          setDocText(editor.getTextWithCursors(cursors));
+        }
+      );
 
       socket?.on("text-operation", (data: operation) => {
         // console.log("event recieved");
         // console.log({ data });
 
         if (data.type === "insert") {
-          editor.insertChar(data?.char || "", data.position, true);
+          editor.insertChar(data?.character || "", data.position, true);
         } else if (data.type === "delete") {
           editor.deleteChar(data.position, true);
         }
@@ -197,19 +197,19 @@ const TextEditor = ({
       });
 
       socket?.on("cursor-update", (cursors: cursorInfo[]) => {
-          setCursors(cursors.filter((cursor) => userId !== cursor.userId))
-          setDocText(editor.getTextWithCursors(cursors));
-      })
+        // setCursors(cursors.filter((cursor) => userId !== cursor.userId));
+        setCursors(cursors);
+        setDocText(editor.getTextWithCursors(cursors));
+      });
     };
 
     initializeSocket();
   }, [editor]);
 
-
   useEffect(() => {
-    if(!editor) return
-    setDocText(editor.getTextWithCursors(cursors))
-  }, [editor?.cursor_position, cursors])
+    if (!editor) return;
+    setDocText(editor.getTextWithCursors(cursors));
+  }, [editor?.cursor_position, cursors]);
 
   const fontInfo = { width: 8, height: 18 };
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -225,7 +225,7 @@ const TextEditor = ({
         socketRef.current?.emit("text-operation", {
           type: "insert",
           userId,
-          char: "\n",
+          character: "\n",
           documentId,
           position: currPosition,
         });
@@ -235,7 +235,7 @@ const TextEditor = ({
         console.log("backspaced");
         editor.deleteChar(editor.cursor_position);
         socketRef.current?.emit("text-operation", {
-          type: "delete", // likely delete instead of insert "\n"
+          type: "delete",
           userId,
           documentId,
           position: currPosition,
@@ -245,21 +245,41 @@ const TextEditor = ({
       case "ArrowUp":
         console.log("up");
         editor.moveCursorUp();
+        socketRef.current?.emit("cursor-update", {
+          userId,
+          documentId,
+          position: editor.cursor_position,
+        });
         break;
 
       case "ArrowDown":
         console.log("down");
         editor.moveCursorDown();
+        socketRef.current?.emit("cursor-update", {
+          userId,
+          documentId,
+          position: editor.cursor_position,
+        });
         break;
 
       case "ArrowLeft":
         console.log("left");
         editor.moveCursorLeft();
+        socketRef.current?.emit("cursor-update", {
+          userId,
+          documentId,
+          position: editor.cursor_position,
+        });
         break;
 
       case "ArrowRight":
         console.log("right");
         editor.moveCursorRight();
+        socketRef.current?.emit("cursor-update", {
+          userId,
+          documentId,
+          position: editor.cursor_position,
+        });
         break;
 
       default:
@@ -268,7 +288,7 @@ const TextEditor = ({
           socketRef.current?.emit("text-operation", {
             type: "insert",
             userId,
-            char: key,
+            character: key,
             documentId,
             position: currPosition,
           });
@@ -290,6 +310,7 @@ const TextEditor = ({
     console.log("current pos", position);
     editor.setCursorPosition(position);
     setDocText(editor.getTextWithCursors(cursors));
+    socketRef.current?.emit("cursor-update", {documentId, userId, position});
   };
 
   return (

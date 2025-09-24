@@ -7,9 +7,12 @@ let redisClient;
 const getCachedDocById = async (documentId) => {
   try {
     redisClient = await getRedisClient();
-    const data = await redisClient.hGetAll(`doc:${documentId}`);
+    const data = await redisClient.hGetAll(`document:${documentId}`);
     if (!data || Object.keys(data).length === 0) return null;
-
+    console.log("cached doc", {
+      ...data,
+      cursors: data.cursors ? JSON.parse(data.cursors) : [],
+    });
     return {
       ...data,
       cursors: data.cursors ? JSON.parse(data.cursors) : [],
@@ -31,7 +34,7 @@ const setDocInCache = async (documentId, data) => {
       content: data.content,
       cursors: JSON.stringify([]),
       title: data.title,
-      createdAt:  data.createdAt.toISOString(),
+      createdAt: data.createdAt.toISOString(),
       updatedAt: data.updatedAt.toISOString(),
     });
     console.log("boooooooo");
@@ -55,8 +58,8 @@ const setUserInfoInCache = async (socketId, userId, documentId) => {
 const getCachedUserInfo = async (socketId) => {
   try {
     redisClient = await getRedisClient();
-    const userInfo = await redisClient.hGetAll(`socket:${socketId}`)
-    // console.log({userInfo}) 
+    const userInfo = await redisClient.hGetAll(`socket:${socketId}`);
+    // console.log({userInfo})
     return userInfo || null;
   } catch (error) {
     throw new Error("Error fetching user info from cache", error);

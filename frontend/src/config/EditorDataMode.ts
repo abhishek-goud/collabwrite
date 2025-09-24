@@ -41,7 +41,7 @@ export class EditorDataModel {
       this.tail = newNode;
       this.index.push(newNode);
       console.log("head", this.index.length);
-      if(!isRemote) this.cursor_position++;
+      if (!isRemote) this.cursor_position++;
 
       return;
     }
@@ -58,7 +58,7 @@ export class EditorDataModel {
       this.index.push(newNode);
       console.log("tail", this.index.length);
       if (char === "\n") this.updateLineInfo();
-      if(!isRemote) this.cursor_position++;
+      if (!isRemote) this.cursor_position++;
       return;
     }
 
@@ -67,7 +67,7 @@ export class EditorDataModel {
     if (prevNode) {
       prevNode.next = newNode;
       newNode.prev = prevNode;
-    } else {  
+    } else {
       this.head = newNode;
     }
     newNode.next = currNode;
@@ -76,7 +76,8 @@ export class EditorDataModel {
     if (char === "\n") this.updateLineInfo();
     // this.updateLineInfo();
     // this.cursor_position++;
-    if(!isRemote || (isRemote && position < this.cursor_position)) this.cursor_position++;
+    if (!isRemote || (isRemote && position < this.cursor_position))
+      this.cursor_position++;
     // if(isRemote && position < this.cursor_position) this.cursor_position++;
   }
 
@@ -93,7 +94,8 @@ export class EditorDataModel {
 
     this.index.splice(position - 1, 1);
 
-    if(!isRemote || (isRemote && position <= this.cursor_position)) this.cursor_position--;
+    if (!isRemote || (isRemote && position <= this.cursor_position))
+      this.cursor_position--;
 
     this.updateLineInfo();
   }
@@ -164,36 +166,78 @@ export class EditorDataModel {
       { userId: this.userId, position: this.cursor_position, color: "" },
     ];
 
+    // Sort descending by position so insertion doesn’t mess up indices
     allCursors.sort((a, b) => b.position - a.position);
 
     const cursorHTML = "<span class='cursor blink'></span>";
 
     for (const cursor of cursors) {
       if (cursor.userId === this.userId) {
+        // Insert local cursor
         text =
           text.slice(0, this.cursor_position) +
           cursorHTML +
           text.slice(this.cursor_position);
       } else {
+        // Remote cursor handling
         const userName = cursor.username || "User";
-        const remoteCursorHTML =
-          `<span class='remoteCursor' style='position: relative; width: 0; height: 18px; background-color: transparent; border-left: 2px solid ${cursor.color}; display: inline-block; vertical-align: baseline; font-size: 0;'>
-                  <span style='position: absolute; top: -20px; left: -2px; background-color: ${cursor.color}; color: white; font-size: 0.7rem; padding: 0px 3px; border-radius: 2px; white-space: nowrap;'>${userName}</span>
+
+        const pos = Math.min(cursor.position, text.length);
+        const remoteCursorHTML = `<span class='remote-cursors' style='position: relative; width: 2px; height: 18px; background-color: ${cursor.color}; display: inline-block; vertical-align: middle;'>
+              <span style='position: absolute; top: -18px; left: -2px; background-color: ${cursor.color}; color: white; font-size: 0.7rem; padding: 0px 3px; border-radius: 2px; white-space: nowrap; opacity: 1;'>${userName}</span>
             </span>`;
-        
-          text =
-            text.slice(0, this.cursor_position) +
-            remoteCursorHTML +
-            text.slice(this.cursor_position);
+
+        text = text.slice(0, pos) + remoteCursorHTML + text.slice(pos);
       }
     }
 
-    const textWithCursor =
-      text.slice(0, this.cursor_position) +
-      cursorHTML +
-      text.slice(this.cursor_position);
-    return textWithCursor;
+    // const textWithCursor =
+    //   text.slice(0, this.cursor_position) +
+    //   cursorHTML +
+    //   text.slice(this.cursor_position);
+    return text;
   }
+
+  // getTextWithCursors(cursors: cursorInfo[]): string {
+  //   let text = this.getText();
+
+  //   const allCursors = [
+  //     ...cursors,
+  //     { userId: this.userId, position: this.cursor_position, color: "" },
+  //   ];
+
+  //   // Sort descending by position so insertion doesn’t mess up indices
+  //   allCursors.sort((a, b) => b.position - a.position);
+
+  //   const selfCursorHTML = "<span class='cursor blink'></span>";
+
+  //   for (const cursor of cursors) {
+  //     const pos = Math.min(cursor.position, text.length);
+
+  //     if (cursor.userId === this.userId) {
+  //       // Insert local cursor
+  //       text =
+  //         text.slice(0, this.cursor_position) +
+  //         selfCursorHTML +
+  //         text.slice(this.cursor_position);
+  //       continue;
+  //     }
+
+  //     // Remote cursor handling
+  //     const userName = cursor.username || "User";
+  //     const remoteCursorHTML = `
+  //     <span class='remote-cursors'
+  //         style='position: relative; width: 2px; height: 18px; background-color: ${cursor.color}; display: inline-block; vertical-align: middle;'>
+  //         <span style='position: absolute; top: -18px; left: -2px; background-color: ${cursor.color}; color: white; font-size: 0.7rem; padding: 0px 3px; border-radius: 2px; white-space: nowrap; opacity: 1;'>
+  //             ${userName}
+  //         </span>
+  //     </span>`;
+
+  //     text = text.slice(0, pos) + remoteCursorHTML + text.slice(pos);
+  //   }
+
+  //   return text;
+  // }
 
   moveCursorUp(): void {
     let currLineIndex = 0;
@@ -311,9 +355,9 @@ export class EditorDataModel {
     this.cursor_position = this.cursor_position + 1;
   }
 
-  setText(text: string): void {
+  setText(text: string, isRemote: boolean = false): void {
     for (let i = 0; i < text.length; i++) {
-      this.insertChar(text[i], i);
+      this.insertChar(text[i], i, isRemote);
     }
   }
 }

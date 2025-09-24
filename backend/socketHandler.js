@@ -24,13 +24,16 @@ const socketHandler = async (io) => {
         try {
           await setUserInfoInCache(socket.id, userId, documentId);
 
-          let doc = await getCachedDocById(socket.id, documentId);
+          let doc = await getCachedDocById(documentId);
           if (!doc) {
             doc = await getDocById(documentId);
             await setDocInCache(documentId, doc);
           }
 
-          let cursors = doc.cursors || [];
+          let cursors = doc?.cursors || [];
+          console.log("size", cursors.length);
+
+          cursors = cursors.filter((c) => c.userId !== userId);
 
           cursors.push({
             userId,
@@ -39,8 +42,8 @@ const socketHandler = async (io) => {
             position: 0,
             color,
           });
-
-          await redisClient.hSet(`doc:${documentId}`, {
+          console.log({ cursors });
+          await redisClient.hSet(`document:${documentId}`, {
             cursors: JSON.stringify(cursors),
           });
 
@@ -127,13 +130,16 @@ const socketHandler = async (io) => {
             character +
             newContent.slice(position);
         } else if (type === "delete") {
+          if (position < 1) return;
+          const adjPos = position - 1;
           newContent =
-            newContent.slice(0, position) + newContent.slice(position + 1);
+            newContent.slice(0, adjPos) + newContent.slice(adjPos + 1);
         }
 
         doc.content = newContent;
 
         // Update cursor
+        // const updatedCursor = doc?.cursors || [];
         const updateIdx = doc.cursors.findIndex((c) => c.userId === userId);
         if (updateIdx >= 0) {
           doc.cursors[updateIdx] = { ...doc.cursors[updateIdx], position };
@@ -143,7 +149,7 @@ const socketHandler = async (io) => {
         }
 
         // Save back to Redis
-        await redisClient.hSet(`doc:${documentId}`, {
+        await redisClient.hSet(`document:${documentId}`, {
           content: doc.content,
           cursors: JSON.stringify(doc.cursors),
         });
@@ -152,18 +158,38 @@ const socketHandler = async (io) => {
         socket.to(documentId).emit("cursor-update", doc.cursors);
 
         // Broadcast text operation (so others update too)
-        // socket.to(documentId).emit("text-operation", {
-        //   documentId,
-        //   type,
-        //   position,
-        //   character,
-        //   userId,
-        // });
+        socket.to(documentId).emit("text-operation", {
+          documentId,
+          type,
+          position,
+          character,
+          userId,
+        });
 
         // Persist final content to DB
+        // console.log("DOC CONTENT",doc.content)
+        console.log("TEXT OP CHAR", character);
+        console.log("NEW CONTENT", newContent);
         await updateDocContentService(documentId, doc.content);
       } catch (error) {
         console.log("Error", error);
+      }
+    });
+
+    socket.on("cursor-update", async (cursorInfo) => {
+      try {
+        const { documentId, userId, position } = cursorInfo;
+        const doc = await getCachedDocById(documentId);
+        if (!doc) return;
+        let cursors = doc?.cursors || [];
+        const updateIdx = cursors.findIndex((c) => c.userId === userId);
+        cursors[updateIdx] = { ...cursors[updateIdx], position };
+        await redisClient.hSet(`document:${documentId}`, {
+          cursors: JSON.stringify(cursors),
+        });
+        io.to(documentId).emit("cursor-update", cursors);
+      } catch (error) {
+        console.log("Error updating cursor", error);
       }
     });
 
