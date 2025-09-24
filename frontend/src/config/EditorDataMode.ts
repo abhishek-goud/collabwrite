@@ -1,3 +1,5 @@
+import type { cursorInfo } from "../components/TextEditor";
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 class CharNode {
   char: string;
@@ -30,7 +32,7 @@ export class EditorDataModel {
     this.documentId = documentId;
   }
 
-  insertChar(char: string, position: number): void {
+  insertChar(char: string, position: number, isRemote: boolean = false): void {
     const newNode = new CharNode(char);
 
     //Empty LinkedList
@@ -39,7 +41,7 @@ export class EditorDataModel {
       this.tail = newNode;
       this.index.push(newNode);
       console.log("head", this.index.length);
-      this.cursor_position++;
+      if(!isRemote) this.cursor_position++;
 
       return;
     }
@@ -56,7 +58,7 @@ export class EditorDataModel {
       this.index.push(newNode);
       console.log("tail", this.index.length);
       if (char === "\n") this.updateLineInfo();
-      this.cursor_position++;
+      if(!isRemote) this.cursor_position++;
       return;
     }
 
@@ -65,7 +67,7 @@ export class EditorDataModel {
     if (prevNode) {
       prevNode.next = newNode;
       newNode.prev = prevNode;
-    } else {
+    } else {  
       this.head = newNode;
     }
     newNode.next = currNode;
@@ -73,10 +75,12 @@ export class EditorDataModel {
     this.index.splice(pos, 0, newNode);
     if (char === "\n") this.updateLineInfo();
     // this.updateLineInfo();
-    this.cursor_position++;
+    // this.cursor_position++;
+    if(!isRemote || (isRemote && position < this.cursor_position)) this.cursor_position++;
+    // if(isRemote && position < this.cursor_position) this.cursor_position++;
   }
 
-  deleteChar(position: number) {
+  deleteChar(position: number, isRemote: boolean = false) {
     if (position - 1 < 0 || position - 1 >= this.index.length) return;
 
     const node = this.index[position - 1];
@@ -89,14 +93,14 @@ export class EditorDataModel {
 
     this.index.splice(position - 1, 1);
 
-    this.cursor_position--;
+    if(!isRemote || (isRemote && position <= this.cursor_position)) this.cursor_position--;
 
     this.updateLineInfo();
   }
 
   getText(): string {
     let text = "";
-    this.index.map((node, index) => {
+    this.index.map((node) => {
       text += node.char;
     });
     // console.log("Current text:", text);
@@ -152,11 +156,42 @@ export class EditorDataModel {
     }
   };
 
-  getTextWithCursor(cursorPosition: number): string {
-    const text = this.getText();
+  getTextWithCursors(cursors: cursorInfo[]): string {
+    let text = this.getText();
+
+    const allCursors = [
+      ...cursors,
+      { userId: this.userId, position: this.cursor_position, color: "" },
+    ];
+
+    allCursors.sort((a, b) => b.position - a.position);
+
     const cursorHTML = "<span class='cursor blink'></span>";
+
+    for (const cursor of cursors) {
+      if (cursor.userId === this.userId) {
+        text =
+          text.slice(0, this.cursor_position) +
+          cursorHTML +
+          text.slice(this.cursor_position);
+      } else {
+        const userName = cursor.username || "User";
+        const remoteCursorHTML =
+          `<span class='remoteCursor' style='position: relative; width: 0; height: 18px; background-color: transparent; border-left: 2px solid ${cursor.color}; display: inline-block; vertical-align: baseline; font-size: 0;'>
+                  <span style='position: absolute; top: -20px; left: -2px; background-color: ${cursor.color}; color: white; font-size: 0.7rem; padding: 0px 3px; border-radius: 2px; white-space: nowrap;'>${userName}</span>
+            </span>`;
+        
+          text =
+            text.slice(0, this.cursor_position) +
+            remoteCursorHTML +
+            text.slice(this.cursor_position);
+      }
+    }
+
     const textWithCursor =
-      text.slice(0, cursorPosition) + cursorHTML + text.slice(cursorPosition);
+      text.slice(0, this.cursor_position) +
+      cursorHTML +
+      text.slice(this.cursor_position);
     return textWithCursor;
   }
 
@@ -277,7 +312,7 @@ export class EditorDataModel {
   }
 
   setText(text: string): void {
-    for(let i = 0; i < text.length; i++){
+    for (let i = 0; i < text.length; i++) {
       this.insertChar(text[i], i);
     }
   }

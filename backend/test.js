@@ -8,6 +8,8 @@
 //             resolve(); // resolve the promise after 5 seconds
 //         }, 5000);
 
+const getRedisClient = require("./config");
+
         
 //     });
 // };
@@ -25,23 +27,49 @@
 
 
 
-const useCount =(value) => {
-    let count = value || 0;
+// const useCount =(value) => {
+//     let count = value || 0;
     
-    const setCount = () => {
-        count++;
-    }
+//     const setCount = () => {
+//         count++;
+//     }
 
-    return [count, setCount];
+//     return [count, setCount];
+// }
+
+
+// const [count, setCount] = useCount(1);
+// setCount();
+// console.log(count);
+
+// const [count2, setCount2] = useCount(5);
+// setCount2();
+// console.log(count2);
+
+
+
+const greet = () => {
+    console.log("hello",getName())
+}
+
+greet()
+
+function getName ()  {
+    return "alice";
+}
+
+// getName = () => {
+//     return "alice";
+// }
+
+
+async function func(){
+    const redis = await getRedisClient();
+    await redis.set("hii", "bye")
+    console.log(await redis.get("hii"))
 }
 
 
-const [count, setCount] = useCount(1);
-setCount();
-console.log(count);
-
-const [count2, setCount2] = useCount(5);
-setCount2();
-console.log(count2);
+func()
 
 

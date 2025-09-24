@@ -1,8 +1,8 @@
-const { PrismaClient } = require("../generated/prisma");
+const { PrismaClient } = require("../../generated/prisma");
 
 const prisma = new PrismaClient();
 
-const getUsers = async ({ username, email }) => {
+const getUser = async ({ username, email }) => {
   try {
     const user = await prisma.user.findFirst({
       where: {
@@ -32,4 +32,12 @@ const createUser = async ({ username, email, passwordHash, userId }) => {
   }
 };
 
-module.exports = { getUsers, createUser };
+const getUserById = async (userId) => {
+  try {
+    const user = await prisma.findFirst({ where: { userId: userId } });
+    return user;
+  } catch (error) {
+    throw new Error("Internal Server Error")
+  }
+};
+module.exports = { getUser, createUser, getUserById };

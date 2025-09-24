@@ -1,4 +1,4 @@
-const { PrismaClient } = require("../generated/prisma");
+const { PrismaClient } = require("../../generated/prisma");
 
 const prisma = new PrismaClient();
 
@@ -74,11 +74,10 @@ const saveDocument = async (userId, title) => {
   }
 };
 
-const getDocById = async (documentId, userId) => {
+const getDocById = async (documentId) => {
   try {
     const doc = await prisma.document.findUnique({
       where: { docId: documentId },
-
     });
     return doc;
   } catch (err) {
@@ -116,7 +115,7 @@ const checkDocumentPermissionService = async (docId, userId) => {
     });
 
     if (!permission) {
-      console.log("null")
+      console.log("null");
       return null;
     }
 
@@ -127,10 +126,56 @@ const checkDocumentPermissionService = async (docId, userId) => {
   }
 };
 
+const shareDocumentService = async ({
+  shareUserId,
+  documentId,
+  shareAccess,
+}) => {
+  try {
+    const result = await prisma.permission.upsert({
+      where: {
+        userId_docId: {
+          userId: shareUserId,
+          docId: documentId,
+        },
+      },
+      update: {
+        access: shareAccess,
+      },
+      create: {
+        userId: shareUserId,
+        docId: documentId,
+        access: shareAccess,
+      },
+    });
+    return result;
+  } catch (error) {
+    console.log({ error });
+    throw new Error("Error sharing document");
+  }
+};
+
+const updateDocContentService = async (documentId, content) => {
+  try {
+    const doc = await prisma.document.update({
+      where: {
+        docId: documentId,
+      },
+      data: {
+        content: content,
+      },
+    });
+  } catch (err) {
+    throw new Error("Error updating document");
+  }
+};
+
 module.exports = {
   getDocsByUserId,
   saveDocument,
   getDocById,
   updateDocService,
-  checkDocumentPermissionService
+  checkDocumentPermissionService,
+  shareDocumentService,
+  updateDocContentService
 };

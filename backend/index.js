@@ -7,21 +7,22 @@ const app = express();
 const userRouter = require("./routes/users");
 const documentRouter = require("./routes/documents");
 
-const {Server} = require("socket.io");
+const { Server } = require("socket.io");
 const { socketHandler } = require("./socketHandler");
 const httpServer = require("http").createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
-  }});
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  },
+});
 
 socketHandler(io);
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
@@ -48,6 +49,7 @@ app.get("/", (req, res) => {
 
 app.use("/user", userRouter);
 app.use("/doc", documentRouter);
+
 try {
   httpServer.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
@@ -55,4 +57,3 @@ try {
 } catch (err) {
   console.error("Error starting server:", err);
 }
-

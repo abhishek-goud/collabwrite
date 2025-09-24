@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import {
@@ -13,6 +14,8 @@ import { EditorDataModel } from "../config/EditorDataMode";
 import axios from "../config/axios";
 import { io, Socket } from "socket.io-client";
 
+import colors from "../constants/colors"
+
 interface TextEditorProps {
   documentId: string | undefined;
   username: string | undefined;
@@ -20,6 +23,23 @@ interface TextEditorProps {
   setUsername: React.Dispatch<React.SetStateAction<string>>;
   setTitle: React.Dispatch<React.SetStateAction<string>>;
   setShowLoader: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+interface operation {
+  type: "insert" | "delete";
+  userId: string;
+  char?: string;
+  position: number;
+  documentId: string;
+}
+
+export interface cursorInfo{
+  position: number,
+  username: string,
+  userId: string,
+  color: string,
+  documentId: string
+
 }
 
 const TextEditor = ({
@@ -39,8 +59,9 @@ const TextEditor = ({
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [editor, setEditor] = useState<EditorDataModel | null>(null);
   const [userId, setUserId] = useState();
-  const [text, setText] = useState("");
+  const [docText, setDocText] = useState("");
   const socketRef = useRef<Socket | null>(null);
+  const [cursors, setCursors] =  useState<cursorInfo[]>([]);
   // const [loading, setLoading] = useState(true)
 
   const fetchDocument = async () => {
@@ -49,20 +70,38 @@ const TextEditor = ({
     setTitle(res.data.title);
     setPermission(res.data.permission);
     editor?.setText(res.data.content);
-    setText(editor?.getTextWithCursor(editor.cursor_position) || "");
+    setDocText(editor?.getTextWithCursors(cursors) || "");
   };
 
-  const handleShare = async() => {
-    await axios.put(``)
-  }
+  const handleShare = async () => {
+    try {
+      const res = await axios.put(`/doc/share/${documentId}`, {
+        shareUsername,
+        shareAccess,
+      });
+      if (res.status != 200) {
+        setShareStatus(`Error sharing document with ${shareUsername}`);
+        return;
+      }
+
+      setShareStatus(`Document successfully shared with ${shareUsername}`);
+    } catch (err) {
+      setShareStatus(`Error sharing document with ${shareUsername}`);
+      console.log("error sharing document");
+    }
+  };
 
   useEffect(() => {
     const fetchUserDetails = async () => {
-      const response = await axios.get("/user/session");
-      const data = response.data;
+      try {
+        const response = await axios.get("/user/session");
+        const data = response.data;
 
-      setUserId(data.userId);
-      setUsername(data.username);
+        setUserId(data.userId);
+        setUsername(data.username);
+      } catch (err) {
+        console.log("Error fetching user details");
+      }
     };
 
     fetchUserDetails();
@@ -75,7 +114,7 @@ const TextEditor = ({
           const res = await axios.put(`/doc/${documentId}`, {
             content: editor?.getText(),
           });
-          setShowLoader(false);
+          // setShowLoader(false);
           console.log("doc updated", res.data);
         } catch (error) {
           console.error("Error updating document:", error);
@@ -84,7 +123,7 @@ const TextEditor = ({
     };
 
     updateDocument();
-  }, [text]);
+  }, [docText]);
 
   useEffect(() => {
     const updateDocument = async () => {
@@ -92,7 +131,7 @@ const TextEditor = ({
         try {
           setShowLoader(true);
           const res = await axios.put(`/doc/${documentId}`, {
-            title: title,
+            title: title || "Untitled Document",
           });
           setShowLoader(false);
           console.log("doc updated", res.data);
@@ -116,49 +155,129 @@ const TextEditor = ({
     if (!editor) return;
 
     const initializeSocket = async () => {
-      await fetchDocument();
-      socketRef.current = io(import.meta.env.VITE_API_URL);
+      try {
+        socketRef.current = io(import.meta.env.VITE_API_URL);
+        setupSocketHandlers();
+        await fetchDocument();
+      } catch (err) {
+        console.log(
+          "error fetching document or establishing socket connection"
+        );
+      }
+    };
+
+    const setupSocketHandlers = () => {
+     
       const socket = socketRef.current;
 
-      socket.on("connect", () => {
-        socket.emit("join-document", { documentId, userId, username });
+      socket?.on("connect", () => {
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        socket.emit("join-document", { documentId, userId, username, color });
         console.log("connected to socket server");
       });
+
+
+      socket?.on("document-state", (data: {content: string, title: string, cursors: cursorInfo[]}) => {
+        editor.setText(data.content)
+        setTitle(title)
+        setCursors(cursors)
+        setDocText(editor.getTextWithCursors(cursors));
+      })
+
+      socket?.on("text-operation", (data: operation) => {
+        // console.log("event recieved");
+        // console.log({ data });
+
+        if (data.type === "insert") {
+          editor.insertChar(data?.char || "", data.position, true);
+        } else if (data.type === "delete") {
+          editor.deleteChar(data.position, true);
+        }
+        setDocText(editor.getTextWithCursors(cursors));
+      });
+
+      socket?.on("cursor-update", (cursors: cursorInfo[]) => {
+          setCursors(cursors.filter((cursor) => userId !== cursor.userId))
+          setDocText(editor.getTextWithCursors(cursors));
+      })
     };
 
     initializeSocket();
   }, [editor]);
 
+
+  useEffect(() => {
+    if(!editor) return
+    setDocText(editor.getTextWithCursors(cursors))
+  }, [editor?.cursor_position, cursors])
+
   const fontInfo = { width: 8, height: 18 };
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!editor) return;
     e.preventDefault();
     const key = e.key;
     console.log("Key pressed:", key);
-    if (!editor) return;
 
-    if (key.length == 1) editor.insertChar(key, editor.cursor_position);
-    else if (key === "Enter") {
-      editor.insertChar("\n", editor.cursor_position);
-      console.log();
-    } else if (key === "Backspace") {
-      console.log("backspaced");
-      editor.deleteChar(editor.cursor_position);
-    } else if (key === "ArrowUp") {
-      console.log("up");
-      editor.moveCursorUp();
-    } else if (key === "ArrowDown") {
-      console.log("down");
-      editor.moveCursorDown();
-    } else if (key === "ArrowLeft") {
-      console.log("left");
-      editor.moveCursorLeft();
-    } else if (key === "ArrowRight") {
-      console.log("down");
-      editor.moveCursorRight();
+    const currPosition = editor.cursor_position;
+    switch (key) {
+      case "Enter":
+        editor.insertChar("\n", editor.cursor_position);
+        socketRef.current?.emit("text-operation", {
+          type: "insert",
+          userId,
+          char: "\n",
+          documentId,
+          position: currPosition,
+        });
+        break;
+
+      case "Backspace":
+        console.log("backspaced");
+        editor.deleteChar(editor.cursor_position);
+        socketRef.current?.emit("text-operation", {
+          type: "delete", // likely delete instead of insert "\n"
+          userId,
+          documentId,
+          position: currPosition,
+        });
+        break;
+
+      case "ArrowUp":
+        console.log("up");
+        editor.moveCursorUp();
+        break;
+
+      case "ArrowDown":
+        console.log("down");
+        editor.moveCursorDown();
+        break;
+
+      case "ArrowLeft":
+        console.log("left");
+        editor.moveCursorLeft();
+        break;
+
+      case "ArrowRight":
+        console.log("right");
+        editor.moveCursorRight();
+        break;
+
+      default:
+        if (key.length === 1) {
+          editor.insertChar(key, editor.cursor_position);
+          socketRef.current?.emit("text-operation", {
+            type: "insert",
+            userId,
+            char: key,
+            documentId,
+            position: currPosition,
+          });
+        }
+        break;
     }
 
     // setText(editor.getText());
-    setText(editor.getTextWithCursor(editor.cursor_position));
+    setDocText(editor.getTextWithCursors(cursors));
     console.log("cursor_position", editor.cursor_position);
   };
 
@@ -170,7 +289,7 @@ const TextEditor = ({
     const position = editor.getCursorPosition(x, y, fontInfo);
     console.log("current pos", position);
     editor.setCursorPosition(position);
-    setText(editor.getTextWithCursor(editor.cursor_position));
+    setDocText(editor.getTextWithCursors(cursors));
   };
 
   return (
@@ -223,27 +342,27 @@ const TextEditor = ({
       {/* Text Editor with improved styling */}
       <div
         ref={editorRef}
-        contentEditable={true}
         suppressContentEditableWarning
         onKeyDown={handleKeyDown}
         onClick={handleClick}
-        // className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto ${
-        //   permission === "read" ? "cursor-default bg-gray-50" : ""
-        // }`}
-        className={`w-full h-full overflow-x-hidden min-h-64 p-3 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto cursor-default  `}
+        contentEditable={permission !== "read"}
+        className={`w-full h-full overflow-x-hidden min-h-64 p-6 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto ${
+          permission === "read" ? "cursor-default bg-gray-50" : ""
+        }`}
+        // className={`w-full h-full overflow-x-hidden min-h-64 p-3 caret-transparent bg-[#FEFDF8] border-gray-300 text-gray-900 text-base focus:outline-none overflow-auto cursor-default  `}
         style={{
           whiteSpace: "pre-wrap",
           fontFamily: "system-ui, -apple-system, sans-serif",
           lineHeight: `${fontInfo.height}px`,
         }}
-        dangerouslySetInnerHTML={{ __html: text }}
+        dangerouslySetInnerHTML={{ __html: docText }}
       />
 
-      {/* {permission === "read" && (
-        <div className="absolute bottom-4 right-4 bg-yellow-100 px-3 py-1 rounded-md text-sm">
+      {permission === "read" && (
+        <div className="absolute bottom-4 right-4 bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1 rounded-md text-sm shadow-sm">
           Read-only mode
         </div>
-      )} */}
+      )}
 
       {/* Custom Dialog implementation */}
       {isShareDialogOpen && (
@@ -318,7 +437,6 @@ const TextEditor = ({
           </div>
         </div>
       )}
-
 
       {/* {isShareDialogOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">

@@ -11,6 +11,7 @@ import {
   Globe,
   Users,
 } from "lucide-react";
+import axios from "../config/axios";
 
 type Cursor = {
   userId: string;
@@ -74,20 +75,9 @@ const Dashboard = () => {
   const handleCreateDocument = async () => {
     console.log("Creating new document...");
     try {
-      const response = await fetch(`http://localhost:3000/doc/new/`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title: `Untitled Document` }),
-      });
+      const res = await axios.post(`http://localhost:3000/doc/new/`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to create document: ${response.status}`);
-      }
-
-      const responseObj = await response.json();
+      const responseObj = await res.data;
 
       navigate(`/app/document/${responseObj.docId}`);
     } catch (error) {

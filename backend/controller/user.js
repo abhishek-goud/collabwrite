@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
-const { getUsers, createUser } = require("../services/users");
+const { getUser, createUser } = require("../services/db/users");
 
 const registerUser = async (req, res) => {
   try {
@@ -20,17 +20,19 @@ const registerUser = async (req, res) => {
     const userId = uuidv4();
 
     await createUser({ username, email, passwordHash, userId });
-    res.status(201).json({ message: "User registered successfully", userId });
+    return res
+      .status(201)
+      .json({ message: "User registered successfully", userId });
   } catch (err) {
     console.error("Error registering user:", err);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
 const userLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await getUsers({ username, password });
+    const user = await getUser({ username, password });
     const isValidpassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidpassword) {
@@ -40,25 +42,23 @@ const userLogin = async (req, res) => {
     req.session.userId = user.userId;
     req.session.username = user.username;
 
-    res.json({
+    return res.json({
       message: "Login successful",
       userId: user.userId,
       username: user.username,
     });
   } catch (err) {
-    res.status(500).json({message: "Internal Server Error"})
-    console.log(err)
+    console.log(err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 const checkSession = (req, res) => {
-  return res
-    .status(200)
-    .json({
-      message: true,
-      username: req.session.username,
-      userId: req.session.userId,
-    });
+  return res.status(200).json({
+    message: true,
+    username: req.session.username,
+    userId: req.session.userId,
+  });
 };
 
 module.exports = { registerUser, userLogin, checkSession };
